@@ -5,11 +5,14 @@ import requests
 import json
 from app.model import Model
 
+from filelock import Timeout, FileLock
 
 # Load configuration
 def load_config():
-    with open(CONFIG_FILE) as f:
-        config = json.load(f)
+    lock = FileLock(CONFIG_FILE + ".lock")
+    with lock:
+        with open(CONFIG_FILE) as f:
+            config = json.load(f)
     return config
 
 

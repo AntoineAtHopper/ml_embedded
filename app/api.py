@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.tasks import repeat_every
 from dotenv import load_dotenv, find_dotenv
+from filelock import Timeout, FileLock
 from transformers import pipeline
 import pandas as pd
 import requests
@@ -36,7 +37,11 @@ from app.model import Model
 #prefix = os.getenv("CLUSTER_ROUTE_PREFIX", "")
 df = None
 CSV_QUERIES = "queries.csv"
+CONFIG_FILE = "config.json"
 
+
+main_worker = None
+worker_id = os.getpid()
 # Instantiate Model
 model = Model()
 
@@ -69,5 +74,32 @@ def predict(background_tasks: BackgroundTasks, image_url: str = ""):
 @app.on_event("startup")
 @repeat_every(seconds=60*60*24)
 def train():
-    print("[*] Training")
-    training_pipeline()
+    global main_worker
+    # Get or Set Main Worker
+    if main_worker is None:
+        lock = FileLock(CONFIG_FILE + ".lock")
+        with lock:
+            with open(CONFIG_FILE, "r+") as f:
+                config = json.load(f)
+                print("...")
+                if config["MAIN_WORKER"] == None:
+                    config["MAIN_WORKER"] = worker_id
+                    f.seek(0, os.SEEK_END)
+                    json.dump(config, f)
+                main_worker = config["MAIN_WORKER"]
+        print("[*] main_worker:", main_worker)
+    if worker_id == main_worker:
+        print("[*] Training")
+        training_pipeline()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    # Reset Main Worker
+    if main_worker == worker_id:
+        lock = FileLock(CONFIG_FILE + ".lock")
+        with lock:
+            with open(CONFIG_FILE, "w+") as f:
+                config = json.load(f)
+                config["MAIN_WORKER"] = None
+                json.dump(config, f)
