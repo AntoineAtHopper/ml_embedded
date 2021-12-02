@@ -2,6 +2,9 @@
 ## Load Balancing 
 $num_workers = (2 x $num_cores) + 1
 gunicorn main:app -w $num_workers -k uvicorn.workers.UvicornWorker -b "0.0.0.0:8888"
+
+gunicorn main:app -w 2 -k uvicorn.workers.UvicornWorker -b "0.0.0.0:8888"
+
 [Doc](https://fastapi.tiangolo.com/deployment/concepts/)
 
 
@@ -84,7 +87,7 @@ def train():
                 print("...")
                 if config["MAIN_WORKER"] == None:
                     config["MAIN_WORKER"] = worker_id
-                    f.seek(0, os.SEEK_END)
+                    f.seek(0, os.SEEK_SET)
                     json.dump(config, f)
                 main_worker = config["MAIN_WORKER"]
         print("[*] main_worker:", main_worker)
