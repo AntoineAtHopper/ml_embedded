@@ -29,7 +29,7 @@ import re
 
 from PIL import Image
 
-from app.tasks import save_query, notify, training_pipeline
+from app.tasks import save_query, training_pipeline
 from app.model import Model
 
 #load_dotenv(find_dotenv())
